@@ -26,5 +26,6 @@ async def test_la_racine_repond():
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/")
-    # On accepte un 200 (si route existante) ou un 404 standard de FastAPI, l'important c'est que l'app réponde
+    # On accepte un 200 ou 404 standard de FastAPI.
+    # L'important est que l'application démarre et réponde.
     assert response.status_code in [200, 404]
