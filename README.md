@@ -139,6 +139,12 @@ celery -A app.workers.celery_app beat --loglevel=info
 Le cycle de scraping s'exécutera alors automatiquement selon l'intervalle configuré.
 
 ---
+# Migrations en mode full Docker
+```bash
+docker compose run --rm api alembic upgrade head
+```
+
+---
 
 ## Endpoints de l'API
 
