@@ -1,15 +1,13 @@
 from urllib.parse import urljoin
-
+from decimal import Decimal
 from app.schemas.product import ProductData
 
 BASE_URL = "https://books.toscrape.com/"
 
 
 def clean_price(raw_price: str) -> int:
-    raw_price = raw_price.replace("£", "")
-    raw_price = float(raw_price)
-    raw_price = int(raw_price * 100)
-    return raw_price
+    cleaned = raw_price.replace("£", "").replace("€", "").strip()
+    return int(Decimal(cleaned) * 100)
 
 
 def normalize(raw: dict) -> ProductData:
