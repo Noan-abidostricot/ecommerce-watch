@@ -108,7 +108,14 @@
 
     <script>
         let chart = null;
-
+        const labels = snapshots.map(s =>
+            new Date(s.scraped_at).toLocaleString("fr-FR", {
+                day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+            })
+        );
+        const prices = snapshots.map(s => s.price / 100);
+        // ...
+        label: "Prix (£)",
         async function loadProducts() {
             const response = await fetch("/products");
             const products = await response.json();
