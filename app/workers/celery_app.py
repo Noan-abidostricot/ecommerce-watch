@@ -13,6 +13,6 @@ celery_app = Celery(
 celery_app.conf.beat_schedule = {
     "scrape-periodique": {
         "task": "app.workers.tasks.scrape_task",
-        "schedule": 60.0,
+        "schedule": settings.scrape_interval_hours * 3600,
     },
 }

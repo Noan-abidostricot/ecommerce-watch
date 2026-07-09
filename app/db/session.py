@@ -6,7 +6,7 @@ from app.config import settings
 
 engine = create_async_engine(
     str(settings.database_url),
-    echo=True,
+    echo=(settings.log_level == "DEBUG"),
 )
 
 async_session = async_sessionmaker(

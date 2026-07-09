@@ -1,8 +1,8 @@
 import asyncio
 
 from sqlalchemy import select
-
-from app.db.session import async_session
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+# from app.db.session import async_session
 from app.models.competitor import Competitor
 from app.models.price_snapshot import PriceSnapshot
 from app.models.product import Product
@@ -49,22 +49,26 @@ def create_snapshot(session, product, data) -> None:
 
 
 async def run_scrape_cycle() -> None:
-    async with async_session() as session:
-        competitor = await get_or_create_competitor(session)
+    engine = create_async_engine(str(settings.database_url))
+    session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    try:
+        async with session_factory() as session:
+            competitor = await get_or_create_competitor(session)
 
-        scraper = BooksToScrapeScraper()
-        html = await scraper.fetch(scraper.BASE_URL)
-        raw_products = scraper.parse(html)
+            scraper = BooksToScrapeScraper()
+            html = await scraper.fetch(scraper.BASE_URL)
+            raw_products = scraper.parse(html)
 
-        for raw in raw_products:
-            data = normalize(raw)
-            product = await get_or_create_product(session, competitor, data)
-            create_snapshot(session, product, data)
+            for raw in raw_products:
+                data = normalize(raw)
+                product = await get_or_create_product(session, competitor, data)
+                create_snapshot(session, product, data)
 
-        await run_detection(session)
-        await send_notifications(session)
-        await session.commit()
-
+            await run_detection(session)
+            await send_notifications(session)
+            await session.commit()
+    finally:
+        await engine.dispose()
 
 @celery_app.task
 def scrape_task() -> None:
