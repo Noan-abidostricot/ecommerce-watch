@@ -6,6 +6,8 @@ class ProductData(BaseModel):
     price_cents: int
     available: bool
     url: str
+    external_ref: str | None = None
+
 
 class ProductOut(BaseModel):
     id: int

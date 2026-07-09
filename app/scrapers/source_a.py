@@ -1,9 +1,15 @@
 import asyncio
+from decimal import Decimal
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
 from app.scrapers.base import BaseScraper
+
+
+def clean_price(raw_price: str) -> int:
+    cleaned = raw_price.replace("£", "").replace("€", "").strip()
+    return int(Decimal(cleaned) * 100)
 
 
 class BooksToScrapeScraper(BaseScraper):
@@ -26,9 +32,10 @@ class BooksToScrapeScraper(BaseScraper):
         for book in soup.find_all("article", class_="product_pod"):
             products.append({
                 "title": book.find("h3").find("a")["title"],
-                "price": book.find("p", class_="price_color").text,
+                "price_cents": clean_price(book.find("p", class_="price_color").text),
                 "available": "In stock" in book.find("p", class_="availability").text,
                 "link": urljoin(page_url, book.find("h3").find("a")["href"]),
+                "external_ref": None,
             })
         return products
 

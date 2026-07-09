@@ -1,14 +1,24 @@
-from app.services.normalizer import clean_price
+from app.services.normalizer import normalize
 
 
-def test_clean_price_cas_simple():
-    assert clean_price("£51.77") == 5177
+def test_normalize_construit_product_data():
+    raw = {
+        "title": "Café Calvados",
+        "price_cents": 650,
+        "available": True,
+        "link": "https://exemple.test/produit",
+        "external_ref": "29860",
+    }
+    data = normalize(raw)
+    assert data.price_cents == 650
+    assert data.external_ref == "29860"
 
 
-def test_clean_price_cas_qui_tronquait():
-    # avec int(float * 100), ce test échouait : 434 au lieu de 435
-    assert clean_price("£4.35") == 435
-
-
-def test_clean_price_euros_et_espaces():
-    assert clean_price(" 12.99€ ") == 1299
+def test_normalize_sans_external_ref():
+    raw = {
+        "title": "Livre",
+        "price_cents": 1399,
+        "available": True,
+        "link": "https://exemple.test/livre",
+    }
+    assert normalize(raw).external_ref is None

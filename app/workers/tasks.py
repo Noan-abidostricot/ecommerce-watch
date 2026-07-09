@@ -1,26 +1,27 @@
-import asyncio
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.config import settings
-
-# from app.db.session import async_session
 from app.models.competitor import Competitor
 from app.models.price_snapshot import PriceSnapshot
 from app.models.product import Product
+from app.scrapers.castel import CastelScraper
 from app.scrapers.source_a import BooksToScrapeScraper
 from app.services.detector import run_detection
 from app.services.normalizer import normalize
 from app.services.notifier import send_notifications
-from app.workers.celery_app import celery_app
+
+SOURCES = [
+    ("source_a", "Books to Scrape", BooksToScrapeScraper),
+    ("castel", "La Brûlerie du Castel", CastelScraper),
+]
 
 
-async def get_or_create_competitor(session) -> Competitor:
-    result = await session.execute(select(Competitor).where(Competitor.source == "source_a"))
+async def get_or_create_competitor(session, source: str, name: str) -> Competitor:
+    result = await session.execute(select(Competitor).where(Competitor.source == source))
     competitor = result.scalar_one_or_none()
     if competitor is None:
-        competitor = Competitor(name="Books to Scrape", source="source_a")
+        competitor = Competitor(name=name, source=source)
         session.add(competitor)
         await session.flush()
     return competitor
@@ -34,6 +35,7 @@ async def get_or_create_product(session, competitor, data) -> Product:
             name=data.title,
             url=data.url,
             competitor_id=competitor.id,
+            external_ref=data.external_ref,
         )
         session.add(product)
         await session.flush()
@@ -50,39 +52,24 @@ def create_snapshot(session, product, data) -> None:
 
 
 async def run_scrape_cycle() -> None:
-    # 1. On crée l'engine (pense bien à importer 'settings' en haut du fichier)
     engine = create_async_engine(str(settings.database_url))
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     try:
         async with session_factory() as session:
-            # Récupérer ou créer le compétiteur
-            competitor = await get_or_create_competitor(session)
+            for source, name, scraper_cls in SOURCES:
+                competitor = await get_or_create_competitor(session, source, name)
+                scraper = scraper_cls()
+                raw_products = await scraper.scrape_all()
 
-            # Initialiser le scraper
-            scraper = BooksToScrapeScraper()
+                for raw in raw_products:
+                    data = normalize(raw)
+                    product = await get_or_create_product(session, competitor, data)
+                    create_snapshot(session, product, data)
 
-            # Suppression du 'fetch' inutile ici car scrape_all() s'en occupe
-            raw_products = await scraper.scrape_all()
-
-            # Boucle de traitement et d'enregistrement
-            for raw in raw_products:
-                data = normalize(raw)
-                product = await get_or_create_product(session, competitor, data)
-                create_snapshot(session, product, data)
-
-            # Business logic post-scraping
             await run_detection(session)
             await send_notifications(session)
-
-            # On valide tout en base de données d'un coup
             await session.commit()
 
     finally:
-        # On ferme proprement l'engine pour libérer les connexions
         await engine.dispose()
-
-
-@celery_app.task
-def scrape_task() -> None:
-    asyncio.run(run_scrape_cycle())
