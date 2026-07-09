@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     scrape_interval_hours: int = 6
     log_level: str = "INFO"
+    alert_recipient: str
 
     model_config = SettingsConfigDict(env_file=".env")
 
