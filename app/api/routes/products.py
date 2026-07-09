@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +7,7 @@ from app.models.price_snapshot import PriceSnapshot
 from app.models.product import Product
 from app.schemas.price_snapshot import SnapshotOut
 from app.schemas.product import ProductOut
-from fastapi import HTTPException, Query
+
 router = APIRouter()
 
 

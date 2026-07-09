@@ -1,5 +1,5 @@
-from urllib.parse import urljoin
 from decimal import Decimal
+
 from app.schemas.product import ProductData
 
 

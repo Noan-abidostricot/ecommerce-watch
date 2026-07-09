@@ -1,7 +1,15 @@
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+if TYPE_CHECKING:
+    from app.models.alert import Alert
+    from app.models.competitor import Competitor
+    from app.models.price_snapshot import PriceSnapshot
+    from app.models.product import Product
 
 
 class Product(Base):

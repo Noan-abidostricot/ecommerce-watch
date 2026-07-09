@@ -2,6 +2,9 @@ import asyncio
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from app.config import settings
+
 # from app.db.session import async_session
 from app.models.competitor import Competitor
 from app.models.price_snapshot import PriceSnapshot
@@ -14,9 +17,7 @@ from app.workers.celery_app import celery_app
 
 
 async def get_or_create_competitor(session) -> Competitor:
-    result = await session.execute(
-        select(Competitor).where(Competitor.source == "source_a")
-    )
+    result = await session.execute(select(Competitor).where(Competitor.source == "source_a"))
     competitor = result.scalar_one_or_none()
     if competitor is None:
         competitor = Competitor(name="Books to Scrape", source="source_a")
@@ -80,6 +81,7 @@ async def run_scrape_cycle() -> None:
     finally:
         # On ferme proprement l'engine pour libérer les connexions
         await engine.dispose()
+
 
 @celery_app.task
 def scrape_task() -> None:
