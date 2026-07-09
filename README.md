@@ -1,3 +1,4 @@
+![CI](https://github.com/Noan-abidostricot/ecommerce-watch/actions/workflows/ci.yml/badge.svg)
 # E-commerce Watch
 
 Plateforme de veille concurrentielle e-commerce : surveillance automatisée des prix et du stock, historisation, détection des changements, alertes et tableau de bord.
