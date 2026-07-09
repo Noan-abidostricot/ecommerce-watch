@@ -10,7 +10,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     competitor_id: Mapped[int] = mapped_column(ForeignKey("competitors.id"))
     name: Mapped[str] = mapped_column(String(500))
-    url: Mapped[str] = mapped_column(String(1000))
+    url: Mapped[str] = mapped_column(String(1000), unique=True)
     external_ref: Mapped[str | None] = mapped_column(String(255))
     competitor: Mapped["Competitor"] = relationship(back_populates="products")
     snapshots: Mapped[list["PriceSnapshot"]] = relationship(back_populates="product")

@@ -5,11 +5,11 @@ from app.models.price_snapshot import PriceSnapshot
 from app.models.product import Product
 
 
-async def detect_for_product(session, product) -> None:
+async def detect_for_product(session: AsyncSession, product: Product) -> None:
     result = await session.execute(
         select(PriceSnapshot)
         .where(PriceSnapshot.product_id == product.id)
-        .order_by(PriceSnapshot.scraped_at.desc())
+        .order_by(PriceSnapshot.scraped_at.desc(), PriceSnapshot.id.desc())
         .limit(2)
     )
     snapshots = result.scalars().all()
