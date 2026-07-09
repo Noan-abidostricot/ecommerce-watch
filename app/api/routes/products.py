@@ -1,14 +1,13 @@
-import traceback
-
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-from sqlalchemy.orm import joinedload
 
-from app.db.base import get_session  # Ajuste l'import selon ton projet si besoin
+from app.db.session import get_session
+from app.models.price_snapshot import PriceSnapshot
 from app.models.product import Product
-from app.schemas.product import ProductOut  # Ajuste l'import selon ton schéma
-
+from app.schemas.price_snapshot import SnapshotOut
+from app.schemas.product import ProductOut
+from fastapi import HTTPException, Query
 router = APIRouter()
 
 
@@ -18,20 +17,23 @@ async def list_products(
     offset: int = Query(default=0, ge=0),
     session: AsyncSession = Depends(get_session),
 ):
-    try:
-        print("---> Tentative de récupération des produits en BDD...", flush=True)
-        result = await session.execute(
-            select(Product)
-            .options(joinedload(Product.competitor))
-            .order_by(Product.id)
-            .limit(limit)
-            .offset(offset)
-        )
-        products = result.scalars().all()
-        print(f"---> Succès ! {len(products)} produits trouvés.", flush=True)
-        return products
-    except Exception as e:
-        print(f"!!! LE CRASH EST ICI : {str(e)} !!!", flush=True)
-        traceback.print_exc()
-        # Le 'from e' règle l'erreur B904 de Ruff
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    result = await session.execute(
+        select(Product).order_by(Product.id).limit(limit).offset(offset)
+    )
+    return result.scalars().all()
+
+
+@router.get("/products/{product_id}/history", response_model=list[SnapshotOut])
+async def product_history(
+    product_id: int,
+    session: AsyncSession = Depends(get_session),
+):
+    product = await session.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Produit introuvable")
+    result = await session.execute(
+        select(PriceSnapshot)
+        .where(PriceSnapshot.product_id == product_id)
+        .order_by(PriceSnapshot.scraped_at)
+    )
+    return result.scalars().all()
