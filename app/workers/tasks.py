@@ -49,25 +49,36 @@ def create_snapshot(session, product, data) -> None:
 
 
 async def run_scrape_cycle() -> None:
+    # 1. On crée l'engine (pense bien à importer 'settings' en haut du fichier)
     engine = create_async_engine(str(settings.database_url))
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+
     try:
         async with session_factory() as session:
+            # Récupérer ou créer le compétiteur
             competitor = await get_or_create_competitor(session)
 
+            # Initialiser le scraper
             scraper = BooksToScrapeScraper()
-            html = await scraper.fetch(scraper.BASE_URL)
-            raw_products = scraper.parse(html)
 
+            # Suppression du 'fetch' inutile ici car scrape_all() s'en occupe
+            raw_products = await scraper.scrape_all()
+
+            # Boucle de traitement et d'enregistrement
             for raw in raw_products:
                 data = normalize(raw)
                 product = await get_or_create_product(session, competitor, data)
                 create_snapshot(session, product, data)
 
+            # Business logic post-scraping
             await run_detection(session)
             await send_notifications(session)
+
+            # On valide tout en base de données d'un coup
             await session.commit()
+
     finally:
+        # On ferme proprement l'engine pour libérer les connexions
         await engine.dispose()
 
 @celery_app.task
