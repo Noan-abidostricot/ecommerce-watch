@@ -32,6 +32,9 @@
             background: var(--surface);
             border-bottom: 1px solid var(--border);
             padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         header h1 {
@@ -60,6 +63,8 @@
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 1.5rem;
+            min-height: 400px;
+            position: relative;
         }
 
         aside h2 {
@@ -68,6 +73,23 @@
             letter-spacing: 0.05em;
             color: var(--text-muted);
             margin-bottom: 0.75rem;
+        }
+
+        .btn-refresh {
+            display: block;
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-refresh:hover {
+            background: #4338ca;
         }
 
         #productList {
@@ -85,19 +107,30 @@
         #productList li:hover {
             background: #eef0fb;
         }
+
+        .error-msg {
+            color: #dc2626;
+            font-size: 0.85rem;
+            padding: 0.5rem;
+            background: #fef2f2;
+            border-radius: 6px;
+        }
     </style>
 </head>
 
 <body>
 
     <header>
-        <h1>E-commerce Watch</h1>
-        <p class="subtitle">Suivi des prix concurrents</p>
+        <div>
+            <h1>E-commerce Watch</h1>
+            <p class="subtitle">Suivi des prix concurrents</p>
+        </div>
     </header>
 
     <main>
         <aside>
             <h2>Produits</h2>
+            <button class="btn-refresh" onclick="loadProducts()">🔄 Recharger les produits</button>
             <ul id="productList"></ul>
         </aside>
 
@@ -108,48 +141,86 @@
 
     <script>
         let chart = null;
-        const labels = snapshots.map(s =>
-            new Date(s.scraped_at).toLocaleString("fr-FR", {
-                day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
-            })
-        );
-        const prices = snapshots.map(s => s.price / 100);
-        // ...
-        label: "Prix (£)",
+
         async function loadProducts() {
-            const response = await fetch("/products");
-            const products = await response.json();
             const list = document.getElementById("productList");
-            for (const product of products) {
-                const li = document.createElement("li");
-                li.textContent = product.name;
-                li.style.cursor = "pointer";
-                li.onclick = () => loadHistory(product.id);
-                list.appendChild(li);
+            list.innerHTML = "<li>Chargement...</li>";
+
+            try {
+                const response = await fetch("/products");
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP : ${response.status}`);
+                }
+                const products = await response.json();
+                list.innerHTML = "";
+
+                if (products.length === 0) {
+                    list.innerHTML = "<li>Aucun produit trouvé en BDD</li>";
+                    return;
+                }
+
+                for (const product of products) {
+                    const li = document.createElement("li");
+                    li.textContent = product.name;
+                    li.onclick = () => loadHistory(product.id);
+                    list.appendChild(li);
+                }
+            } catch (error) {
+                console.error("Erreur lors du chargement des produits :", error);
+                list.innerHTML = `<li class="error-msg">❌ Erreur : ${error.message}</li>`;
             }
         }
 
         async function loadHistory(productId) {
-            const response = await fetch(`/products/${productId}/history`);
-            const snapshots = await response.json();
-            const labels = snapshots.map(s => s.scraped_at);
-            const prices = snapshots.map(s => s.price);
-            if (chart) {
-                chart.destroy();
-            }
-            const ctx = document.getElementById("priceChart");
-            chart = new Chart(ctx, {
-                type: "line",
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: "Prix (centimes)",
-                        data: prices,
-                    }]
+            try {
+                const response = await fetch(`/products/${productId}/history`);
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP : ${response.status}`);
                 }
-            });
+                const snapshots = await response.json();
+
+                const labels = snapshots.map(s =>
+                    new Date(s.scraped_at).toLocaleString("fr-FR", {
+                        day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+                    })
+                );
+
+                const prices = snapshots.map(s => s.price / 100);
+
+                if (chart) {
+                    chart.destroy();
+                }
+
+                const ctx = document.getElementById("priceChart");
+                chart = new Chart(ctx, {
+                    type: "line",
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: "Prix (£)",
+                            data: prices,
+                            borderColor: "#4f46e5",
+                            backgroundColor: "rgba(79, 70, 229, 0.1)",
+                            tension: 0.1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error("Erreur lors du chargement de l'historique :", error);
+                alert("Impossible de charger le graphique : " + error.message);
+            }
         }
 
+        // Premier essai automatique
         loadProducts();
     </script>
 </body>
