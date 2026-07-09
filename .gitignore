@@ -1,0 +1,24 @@
+# Secrets et environnement
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Celery
+celerybeat-schedule
+celerybeat-schedule.*
+
+# Base de données locale / divers
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
