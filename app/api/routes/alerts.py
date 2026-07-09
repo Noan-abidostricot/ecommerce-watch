@@ -10,6 +10,12 @@ router = APIRouter()
 
 
 @router.get("/alerts", response_model=list[AlertOut])
-async def list_products(session: AsyncSession = Depends(get_session)):
-    result = await session.execute(select(Alert))
+async def list_alerts(
+    sent: bool | None = None,
+    session: AsyncSession = Depends(get_session),
+):
+    query = select(Alert).order_by(Alert.created_at.desc())
+    if sent is not None:
+        query = query.where(Alert.sent == sent)
+    result = await session.execute(query)
     return result.scalars().all()
