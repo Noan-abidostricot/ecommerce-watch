@@ -1,3 +1,6 @@
+import asyncio
+import logging
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
@@ -10,7 +13,9 @@ from app.scrapers.source_a import BooksToScrapeScraper
 from app.services.detector import run_detection
 from app.services.normalizer import normalize
 from app.services.notifier import send_notifications
+from app.workers.celery_app import celery_app
 
+logger = logging.getLogger(__name__)
 SOURCES = [
     ("source_a", "Books to Scrape", BooksToScrapeScraper),
     ("castel", "La Brûlerie du Castel", CastelScraper),
@@ -57,10 +62,13 @@ async def run_scrape_cycle() -> None:
 
     try:
         async with session_factory() as session:
+            total_produits = 0
             for source, name, scraper_cls in SOURCES:
                 competitor = await get_or_create_competitor(session, source, name)
                 scraper = scraper_cls()
                 raw_products = await scraper.scrape_all()
+                total_produits += len(raw_products)
+                logger.info("%s : %d produits récupérés", name, len(raw_products))
 
                 for raw in raw_products:
                     data = normalize(raw)
@@ -70,6 +78,12 @@ async def run_scrape_cycle() -> None:
             await run_detection(session)
             await send_notifications(session)
             await session.commit()
+            logger.info("Cycle terminé : %d produits sur %d sources", total_produits, len(SOURCES))
 
     finally:
         await engine.dispose()
+
+
+@celery_app.task
+def scrape_task() -> None:
+    asyncio.run(run_scrape_cycle())
