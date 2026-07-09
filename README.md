@@ -86,7 +86,7 @@ ecommerce-watch/
 
 1. Cloner le dépôt :
    ```bash
-   git clone <url-du-depot>
+   git clone https://github.com/Noan-abidostricot/ecommerce-watch
    cd ecommerce-watch
    ```
 
